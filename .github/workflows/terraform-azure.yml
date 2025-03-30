@@ -1,49 +1,32 @@
-name: Terraform AzureRM Deployment
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+# File: .github/workflows/workflow.yml
+name: Run Azure Login with OIDC
+on: [push]
 
 permissions:
+  id-token: write
   contents: read
-
 jobs:
-  terraform:
-    name: 'Terraform Apply'
+  build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Azure login
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.ARM_CLIENT_ID }}
           tenant-id: ${{ secrets.ARM_TENANT_ID }}
           subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Azure CLI script
+        uses: azure/cli@v2
         with:
-          terraform_version: 1.6.0  # Adjust as needed
+          azcliversion: latest
+          inlineScript: |
+            az account show
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
+      - name: Azure PowerShell script
+        uses: azure/powershell@v2
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            Get-AzContext
