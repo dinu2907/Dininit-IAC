@@ -32,10 +32,13 @@ jobs:
 
       - name: Azure Login with Service Principal
         run: |
+          echo "Logging in to Azure..."
+          echo "Client ID: ${{ secrets.ARM_CLIENT_ID }}"
           az login --service-principal \
-            --username ${{ secrets.ARM_CLIENT_ID }} \
-            --password ${{ secrets.ARM_CLIENT_SECRET }} \
-            --tenant ${{ secrets.ARM_TENANT_ID }}
+            --username "${{ secrets.ARM_CLIENT_ID }}" \
+            --password "${{ secrets.ARM_CLIENT_SECRET }}" \
+            --tenant "${{ secrets.ARM_TENANT_ID }}"
+
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
