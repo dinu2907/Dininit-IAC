@@ -1,4 +1,4 @@
-name: Terraform Azure Deployment
+name: Terraform AzureRM Deployment
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.0  # Adjust if needed
+          terraform_version: 1.6.0  # Adjust as needed
 
       - name: Terraform Init
         run: terraform init
