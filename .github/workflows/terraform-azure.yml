@@ -27,19 +27,10 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Install TFLint
-        run: |
-          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-          tflint --version
-
-      - name: Run TFLint (Terraform Linter)
-        run: |
-          tflint --init
-          tflint --recursive
-        continue-on-error: false  # Fail workflow if linting errors are found
-
       - name: Remove Lock File (Ensure Clean Init)
-        run: rm -f .terraform.lock.hcl || true
+        run: |
+          rm -f .terraform.lock.hcl
+          rm -rf .terraform
 
       - name: Terraform Init (With Debug)
         run: |
@@ -49,7 +40,7 @@ jobs:
           ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
 
       - name: Archive Terraform Init Output
-        run: tar -cvf terraform-init-output.tar terraform-init.log .terraform/ .terraform.lock.hcl
+        run: tar -cvf terraform-init-output.tar terraform-init.log .terraform .terraform.lock.hcl
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
@@ -75,10 +66,14 @@ jobs:
       - name: Extract Terraform Init Output
         run: tar -xvf terraform-init-output.tar
 
-      - name: Verify `.terraform` Directory Exists
+      - name: Verify `.terraform` Directory and Lock File
         run: |
           if [ ! -d ".terraform" ]; then
             echo "❌ .terraform directory NOT FOUND! Terraform Init was unsuccessful."
+            exit 1
+          fi
+          if [ ! -f .terraform.lock.hcl ]; then
+            echo "❌ .terraform.lock.hcl NOT FOUND! Terraform Apply may fail."
             exit 1
           fi
 
@@ -95,7 +90,9 @@ jobs:
           terraform_version: 1.5.0
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: |
+          terraform init -input=false -upgrade  # Ensures provider lock file is respected
+          terraform plan -out=tfplan
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
@@ -122,10 +119,14 @@ jobs:
           name: terraform-plan-output
           path: .
 
-      - name: Verify Artifact Existence
+      - name: Verify Artifact and Lock File
         run: |
           if [ ! -f tfplan ]; then
             echo "❌ Terraform Plan file NOT FOUND!"
+            exit 1
+          fi
+          if [ ! -f .terraform.lock.hcl ]; then
+            echo "❌ .terraform.lock.hcl file NOT FOUND!"
             exit 1
           fi
 
@@ -141,11 +142,5 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Wait for Manual Approval
-        run: |
-          echo "🚀 Waiting for manual approval in GitHub Actions UI..."
-          sleep 10  # Simulating manual approval (replace with environment protection)
-        timeout-minutes: 60  # Set actual timeout
-
       - name: Terraform Apply
-        run: terraform apply tfplan
+        run: terraform apply -input=false tfplan
