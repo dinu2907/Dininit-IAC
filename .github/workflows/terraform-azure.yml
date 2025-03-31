@@ -27,15 +27,13 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Clean Previous Terraform Data
-        run: |
-          rm -f .terraform.lock.hcl
-          rm -rf .terraform
+      - name: Remove Old Terraform Files
+        run: rm -rf .terraform .terraform.lock.hcl
 
-      - name: Terraform Init
+      - name: Terraform Init (Ensure Provider Install)
         run: terraform init -input=false -upgrade | tee terraform-init.log
 
-      - name: Save Terraform Init State
+      - name: Archive Terraform Init State
         run: tar -cvf terraform-init-output.tar .terraform terraform-init.log .terraform.lock.hcl
 
       - name: Upload Terraform Init State
@@ -62,10 +60,14 @@ jobs:
       - name: Extract Terraform Init State
         run: tar -xvf terraform-init-output.tar
 
-      - name: Verify `.terraform` Directory Exists
+      - name: Verify `.terraform` Directory and Lock File
         run: |
           if [ ! -d ".terraform" ]; then
             echo "❌ .terraform directory NOT FOUND! Terraform Init was unsuccessful."
+            exit 1
+          fi
+          if [ ! -f .terraform.lock.hcl ]; then
+            echo "❌ .terraform.lock.hcl file NOT FOUND!"
             exit 1
           fi
 
@@ -81,7 +83,7 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Terraform Init (Ensure Providers are Available)
+      - name: Terraform Init (Ensure Providers are Installed)
         run: terraform init -input=false -upgrade
 
       - name: Terraform Validate
@@ -90,8 +92,8 @@ jobs:
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
-      - name: Save Terraform Plan State
-        run: tar -cvf terraform-plan-output.tar tfplan .terraform.lock.hcl
+      - name: Archive Terraform Plan State
+        run: tar -cvf terraform-plan-output.tar tfplan .terraform .terraform.lock.hcl
 
       - name: Upload Terraform Plan State
         uses: actions/upload-artifact@v4
@@ -121,10 +123,10 @@ jobs:
       - name: Extract Terraform Plan State
         run: tar -xvf terraform-plan-output.tar
 
-      - name: Verify Required Files
+      - name: Verify `.terraform` Directory and Lock File
         run: |
-          if [ ! -f tfplan ]; then
-            echo "❌ Terraform Plan file NOT FOUND!"
+          if [ ! -d ".terraform" ]; then
+            echo "❌ .terraform directory NOT FOUND! Terraform Plan was unsuccessful."
             exit 1
           fi
           if [ ! -f .terraform.lock.hcl ]; then
@@ -143,6 +145,9 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
+
+      - name: Terraform Init (Ensure Provider Cache Exists)
+        run: terraform init -input=false -upgrade
 
       - name: Terraform Apply
         run: terraform apply -input=false tfplan
