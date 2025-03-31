@@ -8,7 +8,7 @@ on:
 
 jobs:
   terraform-init:
-    name: Terraform Init & Plan
+    name: Terraform Init
     runs-on: ubuntu-latest
 
     steps:
@@ -36,7 +36,7 @@ jobs:
         run: |
           tflint --init
           tflint --recursive
-        continue-on-error: false  # Fail workflow if lint errors are found
+        continue-on-error: false  # Fails workflow if linting errors are found
 
       - name: Terraform Init (with Debug)
         run: |
@@ -44,17 +44,9 @@ jobs:
           echo "Checking if .terraform directory exists..."
           ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
 
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
-      - name: Debug - List Files After Terraform Init
-        run: ls -R
-
       - name: Archive Terraform Init Output
         run: |
-          tar -cvf terraform-init-output.tar \
-            terraform-init.log tfplan terraform.lock.hcl \
-            .terraform/ || echo "⚠️ Warning: Some files may be missing."
+          tar -cvf terraform-init-output.tar terraform-init.log .terraform/ || echo "⚠️ Warning: Some files may be missing."
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
@@ -62,14 +54,10 @@ jobs:
           name: terraform-init-output
           path: terraform-init-output.tar
 
-  terraform-apply:
-    name: Terraform Apply
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
     needs: terraform-init
-    permissions:
-      id-token: write
-      contents: read
-    environment: dev
 
     steps:
       - name: Checkout repository
@@ -81,18 +69,8 @@ jobs:
           name: terraform-init-output
           path: .
 
-      - name: Verify Artifact Existence
-        run: |
-          if [ ! -f terraform-init-output.tar ]; then
-            echo "❌ Artifact terraform-init-output.tar NOT FOUND!"
-            exit 1
-          fi
-
       - name: Extract Terraform Init Output
         run: tar -xvf terraform-init-output.tar
-
-      - name: Debug - List Extracted Files
-        run: ls -R
 
       - name: Set Azure Service Principal credentials
         run: |
@@ -106,14 +84,52 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Re-Run Terraform Init
-        run: |
-          terraform init -input=false
-          echo "Checking if .terraform directory exists after re-init..."
-          ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
-
-      - name: Recreate Terraform Plan (To Fix Dependency Issue)
+      - name: Terraform Plan
         run: terraform plan -out=tfplan
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-output
+          path: tfplan
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    permissions:
+      id-token: write
+      contents: read
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Terraform Plan Output
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-output
+          path: .
+
+      - name: Verify Artifact Existence
+        run: |
+          if [ ! -f tfplan ]; then
+            echo "❌ Terraform Plan file NOT FOUND!"
+            exit 1
+          fi
+
+      - name: Set Azure Service Principal credentials
+        run: |
+          echo "ARM_CLIENT_ID=${{ secrets.APP_ID }}" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=${{ secrets.TENANT_ID }}" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=${{ secrets.SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+
+      - name: Set up Terraform CLI
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
