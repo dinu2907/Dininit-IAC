@@ -42,8 +42,8 @@ jobs:
           name: terraform-init-output
           path: terraform-init-output.tar
 
-  terraform-plan:
-    name: Terraform Plan
+  terraform-validate:
+    name: Terraform Validate
     runs-on: ubuntu-latest
     needs: terraform-init
 
@@ -60,16 +60,49 @@ jobs:
       - name: Extract Terraform Init State
         run: tar -xvf terraform-init-output.tar
 
-      - name: Verify `.terraform` Directory and Lock File
+      - name: Set up Terraform CLI
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Validate
+        run: terraform validate
+
+  tflint:
+    name: Terraform Lint (TFLint)
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install TFLint
         run: |
-          if [ ! -d ".terraform" ]; then
-            echo "❌ .terraform directory NOT FOUND! Terraform Init was unsuccessful."
-            exit 1
-          fi
-          if [ ! -f .terraform.lock.hcl ]; then
-            echo "❌ .terraform.lock.hcl file NOT FOUND!"
-            exit 1
-          fi
+          curl -fsSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+      - name: Run TFLint
+        run: |
+          tflint --init
+          tflint --format=compact
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: tflint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Terraform Init State
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-init-output
+          path: .
+
+      - name: Extract Terraform Init State
+        run: tar -xvf terraform-init-output.tar
 
       - name: Set Azure Service Principal credentials
         run: |
@@ -85,9 +118,6 @@ jobs:
 
       - name: Terraform Init (Ensure Providers are Installed)
         run: terraform init -input=false -upgrade
-
-      - name: Terraform Validate
-        run: terraform validate
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
@@ -125,19 +155,17 @@ jobs:
       - name: Set InfraCost API Key
         run: echo "INFRACOST_API_KEY=${{ secrets.INFRACOST_API_KEY }}" >> $GITHUB_ENV
 
-      - name: Run InfraCost Breakdown (Table Format)
-        run: infracost breakdown --path=. --format=table --out-file=infracost.txt
+      - name: Run InfraCost Breakdown
+        run: infracost breakdown --path=. --format=json --out-file=infracost.json
 
       - name: Show InfraCost Breakdown
-        run: cat infracost.txt
+        run: cat infracost.json | jq
 
       - name: Archive InfraCost Report
         uses: actions/upload-artifact@v4
         with:
           name: infracost-report
-          path: |
-            infracost.json
-            infracost.txt
+          path: infracost.json
 
   terraform-apply:
     name: Terraform Apply
