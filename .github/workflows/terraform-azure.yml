@@ -36,17 +36,19 @@ jobs:
         run: |
           tflint --init
           tflint --recursive
-        continue-on-error: false  # Fails workflow if linting errors are found
+        continue-on-error: false  # Fail workflow if linting errors are found
 
-      - name: Terraform Init (with Debug)
+      - name: Remove Lock File (Ensure Clean Init)
+        run: rm -f .terraform.lock.hcl || true
+
+      - name: Terraform Init (With Debug)
         run: |
-          terraform init -input=false | tee terraform-init.log
+          terraform init -input=false -upgrade | tee terraform-init.log
           echo "Checking if .terraform directory exists..."
           ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
 
       - name: Archive Terraform Init Output
-        run: |
-          tar -cvf terraform-init-output.tar terraform-init.log .terraform/ || echo "⚠️ Warning: Some files may be missing."
+        run: tar -cvf terraform-init-output.tar terraform-init.log .terraform/
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
@@ -71,6 +73,13 @@ jobs:
 
       - name: Extract Terraform Init Output
         run: tar -xvf terraform-init-output.tar
+
+      - name: Verify `.terraform` Directory Exists
+        run: |
+          if [ ! -d ".terraform" ]; then
+            echo "❌ .terraform directory NOT FOUND! Terraform Init was unsuccessful."
+            exit 1
+          fi
 
       - name: Set Azure Service Principal credentials
         run: |
@@ -131,5 +140,12 @@ jobs:
         with:
           terraform_version: 1.5.0
 
+      - name: **🔒 Manual Approval for Apply**
+        uses: hmarr/auto-approve-action@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply tfplan
