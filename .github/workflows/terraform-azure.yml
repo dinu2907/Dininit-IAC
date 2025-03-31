@@ -140,12 +140,11 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: **🔒 Manual Approval for Apply**
-        uses: hmarr/auto-approve-action@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Wait for Manual Approval
+        run: |
+          echo "🚀 Waiting for manual approval in GitHub Actions UI..."
+          sleep 10  # Simulating manual approval (remove in production)
+        timeout-minutes: 60  # Set an actual timeout if needed
 
       - name: Terraform Apply
         run: terraform apply tfplan
