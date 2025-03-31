@@ -36,7 +36,7 @@ jobs:
         run: terraform init -input=false -upgrade | tee terraform-init.log
 
       - name: Archive Terraform Init Output
-        run: tar -cvf terraform-init-output.tar .terraform terraform-init.log
+        run: tar -cvf terraform-init-output.tar .terraform terraform-init.log .terraform.lock.hcl
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
@@ -81,7 +81,10 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Terraform Validate
+      - name: Terraform Init (Ensure Providers are Available)
+        run: terraform init -input=false -upgrade
+
+      - name: Terraform Validate  # ✅ Now runs after Terraform Init
         run: terraform validate
 
       - name: Terraform Plan
