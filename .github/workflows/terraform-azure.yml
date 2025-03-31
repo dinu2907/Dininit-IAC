@@ -161,12 +161,6 @@ jobs:
       - name: Show InfraCost Breakdown
         run: cat infracost.txt
 
-      - name: Archive InfraCost Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: infracost-report
-          path: infracost.json
-
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
