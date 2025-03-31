@@ -44,11 +44,12 @@ jobs:
       - name: Terraform Init (With Debug)
         run: |
           terraform init -input=false -upgrade | tee terraform-init.log
+          terraform providers lock -platform=linux_amd64
           echo "Checking if .terraform directory exists..."
           ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
 
       - name: Archive Terraform Init Output
-        run: tar -cvf terraform-init-output.tar terraform-init.log .terraform/
+        run: tar -cvf terraform-init-output.tar terraform-init.log .terraform/ .terraform.lock.hcl
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
@@ -143,8 +144,8 @@ jobs:
       - name: Wait for Manual Approval
         run: |
           echo "🚀 Waiting for manual approval in GitHub Actions UI..."
-          sleep 10  # Simulating manual approval (remove in production)
-        timeout-minutes: 60  # Set an actual timeout if needed
+          sleep 10  # Simulating manual approval (replace with environment protection)
+        timeout-minutes: 60  # Set actual timeout
 
       - name: Terraform Apply
         run: terraform apply tfplan
