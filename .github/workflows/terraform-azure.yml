@@ -21,22 +21,3 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: Install Terraform
-      uses: hashicorp/setup-terraform@v3
-
-    - name: Initialize Terraform
-      run: |
-        terraform init
-
-    - name: Validate Terraform
-      run: |
-        terraform validate
-
-    - name: Plan Terraform Changes
-      run: |
-        terraform plan -out=tfplan
-
-    - name: Apply Terraform Changes
-      run: |
-        terraform apply -auto-approve
