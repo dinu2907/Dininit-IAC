@@ -125,17 +125,19 @@ jobs:
       - name: Set InfraCost API Key
         run: echo "INFRACOST_API_KEY=${{ secrets.INFRACOST_API_KEY }}" >> $GITHUB_ENV
 
-      - name: Run InfraCost Breakdown
-        run: infracost breakdown --path=. --format=json --out-file=infracost.json
+      - name: Run InfraCost Breakdown (Table Format)
+        run: infracost breakdown --path=. --format=table --out-file=infracost.txt
 
       - name: Show InfraCost Breakdown
-        run: cat infracost.json | jq
+        run: cat infracost.txt
 
       - name: Archive InfraCost Report
         uses: actions/upload-artifact@v4
         with:
           name: infracost-report
-          path: infracost.json
+          path: |
+            infracost.json
+            infracost.txt
 
   terraform-apply:
     name: Terraform Apply
