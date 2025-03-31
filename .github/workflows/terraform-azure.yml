@@ -3,40 +3,91 @@ name: Terraform IaC Pipeline
 on:
   push:
     branches:
-      - main  # Trigger on push to main branch
+      - main
+  workflow_dispatch:
 
 jobs:
-  terraform:
-    name: Deploy Infrastructure
+  clone:
+    name: Clone Repository
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout code
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      # Step 2: Set environment variables for Service Principal authentication
-      - name: Set Azure Service Principal environment variables
+      - name: List Files After Checkout
+        run: ls -R
+
+      - name: Upload Source Code
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-code
+          path: .
+
+  terraform-init:
+    name: Terraform Init
+    runs-on: ubuntu-latest
+    needs: clone
+    steps:
+      - name: Download Source Code
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-code
+          path: .
+
+      - name: List Files After Download
+        run: ls -R
+
+      - name: Set Azure Service Principal Environment Variables
         run: |
           echo "ARM_CLIENT_ID=${{ secrets.APP_ID }}" >> $GITHUB_ENV
           echo "ARM_CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=${{ secrets.TENANT_ID }}" >> $GITHUB_ENV
           echo "ARM_SUBSCRIPTION_ID=${{ secrets.SUBSCRIPTION_ID }}" >> $GITHUB_ENV
 
-      # Step 3: Set up Terraform
       - name: Set up Terraform CLI
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.5.0  # Specify the required Terraform version
+          terraform_version: 1.5.0
 
-      # Step 4: Initialize Terraform
       - name: Terraform Init
         run: terraform init
 
-      # Step 5: Terraform Plan
+      - name: Upload Terraform Init Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-init-output
+          path: .terraform/
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: terraform-init
+    steps:
+      - name: Download Init Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-init-output
+          path: .terraform/
+
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
-      # Step 6: Terraform Apply
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-output
+          path: tfplan
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    steps:
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-output
+          path: .
+
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
