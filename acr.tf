@@ -4,12 +4,12 @@ resource "azurerm_container_registry" "acr" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = "Basic"             # Choose Basic SKU for free-tier ACR
-  admin_enabled       = true               # Disable admin credentials (Recommended for security)
+  admin_enabled       = false               # Disable admin credentials for security
 }
 
 # 🔹 Grant AKS Permission to Pull from ACR
 resource "azurerm_role_assignment" "aks_acr" {
-  principal_id        = azurerm_kubernetes_cluster.aks.identity[0].principal_id
+  principal_id         = azurerm_kubernetes_cluster.aks.kubelet_identity[0].object_id
   role_definition_name = "AcrPull"
   scope               = azurerm_container_registry.acr.id
 }
