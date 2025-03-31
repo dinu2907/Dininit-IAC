@@ -101,10 +101,46 @@ jobs:
           name: terraform-plan-output
           path: terraform-plan-output.tar
 
+  infracost:
+    name: InfraCost Estimate
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Terraform Plan State
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-output
+          path: .
+
+      - name: Extract Terraform Plan State
+        run: tar -xvf terraform-plan-output.tar
+
+      - name: Install InfraCost CLI
+        run: curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+
+      - name: Set InfraCost API Key
+        run: echo "INFRACOST_API_KEY=${{ secrets.INFRACOST_API_KEY }}" >> $GITHUB_ENV
+
+      - name: Run InfraCost Breakdown
+        run: infracost breakdown --path=. --format=json --out-file=infracost.json
+
+      - name: Show InfraCost Breakdown
+        run: cat infracost.json | jq
+
+      - name: Archive InfraCost Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: infracost-report
+          path: infracost.json
+
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    needs: terraform-plan
+    needs: infracost
     permissions:
       id-token: write
       contents: read
