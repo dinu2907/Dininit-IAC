@@ -27,38 +27,26 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Terraform Init (with Debug)
-        run: |
-          terraform init -input=false | tee terraform-init.log
-          echo "Checking if .terraform directory exists..."
-          ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
+      - name: Terraform Init
+        run: terraform init -input=false
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-
-      - name: Debug - List Files After Terraform Init
-        run: ls -R
-
-      - name: Archive Terraform Init Output
-        run: |
-          tar -cvf terraform-init-output.tar \
-            terraform-init.log tfplan terraform.lock.hcl \
-            .terraform/ || echo "⚠️ Warning: Some files may be missing."
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
         with:
           name: terraform-init-output
-          path: terraform-init-output.tar
+          path: tfplan
 
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
     needs: terraform-init
+    environment: production  # 👈 Adds manual approval step
     permissions:
       id-token: write
       contents: read
-    environment: production
 
     steps:
       - name: Checkout repository
@@ -70,18 +58,8 @@ jobs:
           name: terraform-init-output
           path: .
 
-      - name: Verify Artifact Existence
-        run: |
-          if [ ! -f terraform-init-output.tar ]; then
-            echo "❌ Artifact terraform-init-output.tar NOT FOUND!"
-            exit 1
-          fi
-
       - name: Extract Terraform Init Output
         run: tar -xvf terraform-init-output.tar
-
-      - name: Debug - List Extracted Files
-        run: ls -R
 
       - name: Set Azure Service Principal credentials
         run: |
@@ -95,14 +73,5 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Re-Run Terraform Init
-        run: |
-          terraform init -input=false
-          echo "Checking if .terraform directory exists after re-init..."
-          ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
-
-      - name: Recreate Terraform Plan (To Fix Dependency Issue)
-        run: terraform plan -out=tfplan
-
-      - name: Terraform Apply
+      - name: Terraform Apply (Manual Approval Required)
         run: terraform apply -auto-approve tfplan
