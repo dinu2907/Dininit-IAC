@@ -27,20 +27,16 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Remove Lock File (Ensure Clean Init)
+      - name: Clean Previous Terraform Data
         run: |
           rm -f .terraform.lock.hcl
           rm -rf .terraform
 
-      - name: Terraform Init (With Debug)
-        run: |
-          terraform init -input=false -upgrade | tee terraform-init.log
-          terraform providers lock -platform=linux_amd64
-          echo "Checking if .terraform directory exists..."
-          ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
+      - name: Terraform Init
+        run: terraform init -input=false -upgrade | tee terraform-init.log
 
       - name: Archive Terraform Init Output
-        run: tar -cvf terraform-init-output.tar terraform-init.log .terraform .terraform.lock.hcl
+        run: tar -cvf terraform-init-output.tar .terraform terraform-init.log
 
       - name: Upload Terraform Init Output
         uses: actions/upload-artifact@v4
@@ -66,14 +62,10 @@ jobs:
       - name: Extract Terraform Init Output
         run: tar -xvf terraform-init-output.tar
 
-      - name: Verify `.terraform` Directory and Lock File
+      - name: Verify `.terraform` Directory Exists
         run: |
           if [ ! -d ".terraform" ]; then
             echo "❌ .terraform directory NOT FOUND! Terraform Init was unsuccessful."
-            exit 1
-          fi
-          if [ ! -f .terraform.lock.hcl ]; then
-            echo "❌ .terraform.lock.hcl NOT FOUND! Terraform Apply may fail."
             exit 1
           fi
 
@@ -89,10 +81,11 @@ jobs:
         with:
           terraform_version: 1.5.0
 
+      - name: Terraform Validate
+        run: terraform validate
+
       - name: Terraform Plan
-        run: |
-          terraform init -input=false -upgrade  # Ensures provider lock file is respected
-          terraform plan -out=tfplan
+        run: terraform plan -out=tfplan
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
@@ -103,44 +96,4 @@ jobs:
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    needs: terraform-plan
-    permissions:
-      id-token: write
-      contents: read
-    environment: dev
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download Terraform Plan Output
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-output
-          path: .
-
-      - name: Verify Artifact and Lock File
-        run: |
-          if [ ! -f tfplan ]; then
-            echo "❌ Terraform Plan file NOT FOUND!"
-            exit 1
-          fi
-          if [ ! -f .terraform.lock.hcl ]; then
-            echo "❌ .terraform.lock.hcl file NOT FOUND!"
-            exit 1
-          fi
-
-      - name: Set Azure Service Principal credentials
-        run: |
-          echo "ARM_CLIENT_ID=${{ secrets.APP_ID }}" >> $GITHUB_ENV
-          echo "ARM_CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "ARM_TENANT_ID=${{ secrets.TENANT_ID }}" >> $GITHUB_ENV
-          echo "ARM_SUBSCRIPTION_ID=${{ secrets.SUBSCRIPTION_ID }}" >> $GITHUB_ENV
-
-      - name: Set up Terraform CLI
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-
-      - name: Terraform Apply
-        run: terraform apply -input=false tfplan
+    needs: terraform
