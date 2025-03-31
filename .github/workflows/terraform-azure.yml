@@ -64,9 +64,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug - List Available Artifacts
-        run: ls -R /home/runner/work/_temp || echo "No artifacts found!"
-
       - name: Download Terraform Init Output
         uses: actions/download-artifact@v4
         with:
@@ -97,6 +94,15 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
+
+      - name: Re-Run Terraform Init
+        run: |
+          terraform init -input=false
+          echo "Checking if .terraform directory exists after re-init..."
+          ls -lA .terraform || echo "❌ .terraform directory NOT FOUND!"
+
+      - name: Recreate Terraform Plan (To Fix Dependency Issue)
+        run: terraform plan -out=tfplan
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
