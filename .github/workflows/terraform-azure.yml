@@ -27,6 +27,17 @@ jobs:
         with:
           terraform_version: 1.5.0
 
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+          tflint --version
+
+      - name: Run TFLint (Terraform Linter)
+        run: |
+          tflint --init
+          tflint --recursive
+        continue-on-error: false  # Fail workflow if lint errors are found
+
       - name: Terraform Init (with Debug)
         run: |
           terraform init -input=false | tee terraform-init.log
