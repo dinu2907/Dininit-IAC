@@ -35,10 +35,10 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false -upgrade | tee terraform-init.log
 
-      - name: Archive Terraform Init Output
+      - name: Save Terraform Init State
         run: tar -cvf terraform-init-output.tar .terraform terraform-init.log .terraform.lock.hcl
 
-      - name: Upload Terraform Init Output
+      - name: Upload Terraform Init State
         uses: actions/upload-artifact@v4
         with:
           name: terraform-init-output
@@ -53,13 +53,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Terraform Init Output
+      - name: Download Terraform Init State
         uses: actions/download-artifact@v4
         with:
           name: terraform-init-output
           path: .
 
-      - name: Extract Terraform Init Output
+      - name: Extract Terraform Init State
         run: tar -xvf terraform-init-output.tar
 
       - name: Verify `.terraform` Directory Exists
@@ -84,17 +84,20 @@ jobs:
       - name: Terraform Init (Ensure Providers are Available)
         run: terraform init -input=false -upgrade
 
-      - name: Terraform Validate  # ✅ Now runs after Terraform Init
+      - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
 
-      - name: Upload Terraform Plan
+      - name: Save Terraform Plan State
+        run: tar -cvf terraform-plan-output.tar tfplan .terraform.lock.hcl
+
+      - name: Upload Terraform Plan State
         uses: actions/upload-artifact@v4
         with:
           name: terraform-plan-output
-          path: tfplan
+          path: terraform-plan-output.tar
 
   terraform-apply:
     name: Terraform Apply
@@ -109,16 +112,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Terraform Plan Output
+      - name: Download Terraform Plan State
         uses: actions/download-artifact@v4
         with:
           name: terraform-plan-output
           path: .
 
-      - name: Verify Terraform Plan File
+      - name: Extract Terraform Plan State
+        run: tar -xvf terraform-plan-output.tar
+
+      - name: Verify Required Files
         run: |
           if [ ! -f tfplan ]; then
             echo "❌ Terraform Plan file NOT FOUND!"
+            exit 1
+          fi
+          if [ ! -f .terraform.lock.hcl ]; then
+            echo "❌ .terraform.lock.hcl file NOT FOUND!"
             exit 1
           fi
 
