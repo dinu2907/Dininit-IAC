@@ -1,6 +1,6 @@
 # ✅ Network Interface for VM
 resource "azurerm_network_interface" "test_vm_nic" {
-  name                = "testVMNIC"
+  name                = "testVMNIC1"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
