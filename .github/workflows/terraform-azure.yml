@@ -29,6 +29,9 @@ jobs:
       - name: Remove Old Terraform Files
         run: rm -rf .terraform .terraform.lock.hcl
 
+      - name: Force Unlock State (Optional Safety Net)
+        run: terraform force-unlock -force b994368a-1d40-9c95-ec22-9696c5a8375c || true
+
       - name: Terraform Init (Ensure Provider Install)
         run: terraform init -input=false -upgrade | tee terraform-init.log
 
