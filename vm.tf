@@ -1,13 +1,27 @@
+# ✅ Network Interface for VM
+resource "azurerm_network_interface" "test_vm_nic" {
+  name                = "testVMNIC"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.aks_subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+# ✅ Linux Virtual Machine
 resource "azurerm_linux_virtual_machine" "test_vm" {
   name                = "testVM"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   size                = "Standard_B1s"
   admin_username      = "azureuser"
-  admin_password      = "P@ssword1234!"  # Change this before use!
+  admin_password      = "P@ssword1234!"  # Use a strong, secure password!
 
   network_interface_ids = [
-    azurerm_network_interface.vm_nic.id,
+    azurerm_network_interface.test_vm_nic.id,
   ]
 
   os_disk {
@@ -24,4 +38,9 @@ resource "azurerm_linux_virtual_machine" "test_vm" {
   }
 
   disable_password_authentication = false
+}
+
+# ✅ Output for testing (optional)
+output "test_vm_private_ip" {
+  value = azurerm_network_interface.test_vm_nic.private_ip_address
 }
