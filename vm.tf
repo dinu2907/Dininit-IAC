@@ -1,8 +1,3 @@
-# 🔹 SSH Key (replace with your actual public key)
-variable "admin_ssh_key" {
-  default = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
-}
-
 # 🔹 Network Interface for VM
 resource "azurerm_network_interface" "vm_nic" {
   name                = "testVMNIC"
@@ -16,21 +11,18 @@ resource "azurerm_network_interface" "vm_nic" {
   }
 }
 
-# 🔹 Linux Virtual Machine
+# 🔹 Linux Virtual Machine (with password authentication)
 resource "azurerm_linux_virtual_machine" "test_vm" {
   name                = "testVM"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   size                = "Standard_B1s"
   admin_username      = "azureuser"
+  admin_password      = "P@ssword1234!"  # Change this before use!
+
   network_interface_ids = [
     azurerm_network_interface.vm_nic.id,
   ]
-
-  admin_ssh_key {
-    username   = "azureuser"
-    public_key = var.admin_ssh_key
-  }
 
   os_disk {
     caching              = "ReadWrite"
@@ -45,7 +37,7 @@ resource "azurerm_linux_virtual_machine" "test_vm" {
     version   = "latest"
   }
 
-  disable_password_authentication = true
+  disable_password_authentication = false
 }
 
 # Optional output
