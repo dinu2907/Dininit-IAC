@@ -27,3 +27,22 @@ resource "azurerm_linux_virtual_machine" "test_vm" {
 
   custom_data = filebase64("node_exporter_install.sh")
 }
+
+
+
+
+
+resource "azurerm_network_security_rule" "allow_node_exporter" {
+  name                        = "AllowNodeExporter"
+  priority                    = 1002
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "9100"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.vm_nsg.name
+}
+
