@@ -1,16 +1,22 @@
+# ✅ Resource Group (if not already created elsewhere)
+resource "azurerm_resource_group" "rg" {
+  name     = "IAC"
+  location = "westeurope"  # 👈 NEW region
+}
+
 # ✅ Public IP for VM
 resource "azurerm_public_ip" "test_vm_public_ip" {
   name                = "testVMPublicIP"
-  location            = azurerm_resource_group.rg.location
+  location            = "westeurope"
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Dynamic"
   sku                 = "Basic"
 }
 
-# ✅ Network Security Group for VM
+# ✅ Network Security Group
 resource "azurerm_network_security_group" "vm_nsg" {
   name                = "vmNSG"
-  location            = azurerm_resource_group.rg.location
+  location            = "westeurope"
   resource_group_name = azurerm_resource_group.rg.name
 
   security_rule {
@@ -38,10 +44,10 @@ resource "azurerm_network_security_group" "vm_nsg" {
   }
 }
 
-# ✅ Network Interface for VM
+# ✅ Network Interface
 resource "azurerm_network_interface" "test_vm_nic" {
   name                = "testVMNIC1"
-  location            = azurerm_resource_group.rg.location
+  location            = "westeurope"
   resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
@@ -61,11 +67,11 @@ resource "azurerm_network_interface_security_group_association" "nic_nsg_assoc" 
 # ✅ Linux Virtual Machine
 resource "azurerm_linux_virtual_machine" "test_vm" {
   name                = "testVM"
-  location            = azurerm_resource_group.rg.location
+  location            = "westeurope"
   resource_group_name = azurerm_resource_group.rg.name
   size                = "Standard_B1s"
   admin_username      = "azureuser"
-  admin_password      = "P@ssword1234!"  # Replace in production!
+  admin_password      = "P@ssword1234!"  # Change for production
 
   network_interface_ids = [
     azurerm_network_interface.test_vm_nic.id,
@@ -86,7 +92,7 @@ resource "azurerm_linux_virtual_machine" "test_vm" {
 
   disable_password_authentication = false
 
-  # ✅ Cloud-init to install Node Exporter
+  # Optional: Cloud-init script for Node Exporter
   custom_data = filebase64("${path.module}/scripts/node_exporter_install.sh")
 }
 
